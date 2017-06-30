@@ -12,10 +12,7 @@ function loadDot(DOTstring, targetContainer, displayAsTree) {
     color: {
       background: '#eee',
       border: 'gray',
-      highlight:{
-        background: 'yellow',
-        border: 'gold'
-      }
+      highlight: { background: 'yellow', border: 'gold' }
     },
     font: {
       size: 12,
