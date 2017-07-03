@@ -94,7 +94,7 @@ public class SemanticTest {
     Try.of(() -> Files.createDirectory(dstProjectDir)).getOrElseThrow(Throwables::propagate);
 
     RULE_KEYS.stream()
-      .map(ruleKey -> srcProjectDir.resolve("java-debugging-plugin-" + ruleKey + ".json"))
+      .map(ruleKey -> srcProjectDir.resolve("debug-" + ruleKey + ".json"))
       .filter(p -> p.toFile().exists())
       .forEach(srcJsonFile -> Try.of(() -> Files.copy(srcJsonFile, dstProjectDir.resolve(srcJsonFile.getFileName()), StandardCopyOption.REPLACE_EXISTING))
         .getOrElseThrow(Throwables::propagate));
@@ -123,8 +123,8 @@ public class SemanticTest {
 
   @Test
   public void sonarqube_server() throws Exception {
-    // sonarqube/server/sonar-server (v.5.1.2)
-    test_project("org.codehaus.sonar:sonar-server", "sonarqube/server", "sonar-server");
+    // sonarqube-6.5-M1/server/sonar-server (v.6.5-M1)
+    test_project("org.sonarsource.sonarqube:sonar-server", "sonarqube-6.5-M1/server", "sonar-server");
   }
 
   private static void test_project(String projectKey, String projectName) throws IOException {
