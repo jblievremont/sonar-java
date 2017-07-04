@@ -1,6 +1,6 @@
 /*
  * SonarQube Java
- * Copyright (C) 2013-2017 SonarSource SA
+ * Copyright (C) 2012-2017 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package com.sonar.it.java.suite;
+package com.sonar.it.java.semantic;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.Iterables;
 import com.sonar.orchestrator.Orchestrator;
 import com.sonar.orchestrator.OrchestratorBuilder;
 import com.sonar.orchestrator.build.Build;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -63,9 +65,9 @@ public class SemanticTest {
     OrchestratorBuilder orchestratorBuilder = Orchestrator.builderEnv()
       .setOrchestratorProperty("litsVersion", "0.6")
       .addPlugin("lits")
-      .addPlugin(FileLocation.byWildcardMavenFilename(new File("../../../sonar-java-plugin/target"), "sonar-java-plugin-*.jar"))
-      .addPlugin(FileLocation.of(TestUtils.pluginJar("java-debugging-plugin")))
-      .restoreProfileAtStartup(FileLocation.of("src/test/resources/semantic/profile-java-semantic.xml"));
+      .addPlugin(FileLocation.byWildcardMavenFilename(new File("../../sonar-java-plugin/target"), "sonar-java-plugin-*.jar"))
+      .addPlugin(FileLocation.of(debuggingPlugin()))
+      .restoreProfileAtStartup(FileLocation.of("src/test/resources/profile-java-semantic.xml"));
     ORCHESTRATOR = orchestratorBuilder.build();
   }
 
@@ -73,7 +75,7 @@ public class SemanticTest {
   public static TemporaryFolder TMP_DUMP_OLD_FOLDER = new TemporaryFolder();
   private static Path effectiveDumpOldFolder;
 
-  private static final Path RESULTS_FOLDER = Paths.get("src/test/resources/semantic/");
+  private static final Path RESULTS_FOLDER = Paths.get("src/test/resources/");
 
   /**
    * Contains the key of the rules from debugging plugin used for semantic tests
@@ -94,7 +96,7 @@ public class SemanticTest {
     Try.of(() -> Files.createDirectory(dstProjectDir)).getOrElseThrow(Throwables::propagate);
 
     RULE_KEYS.stream()
-      .map(ruleKey -> srcProjectDir.resolve("debug-" + ruleKey + ".json"))
+      .map(ruleKey -> srcProjectDir.resolve("java-debugging-plugin-" + ruleKey + ".json"))
       .filter(p -> p.toFile().exists())
       .forEach(srcJsonFile -> Try.of(() -> Files.copy(srcJsonFile, dstProjectDir.resolve(srcJsonFile.getFileName()), StandardCopyOption.REPLACE_EXISTING))
         .getOrElseThrow(Throwables::propagate));
@@ -111,20 +113,9 @@ public class SemanticTest {
   }
 
   @Test
-  public void fluent_http() throws Exception {
-    test_project("net.code-story:http", "fluent-http");
-  }
-
-  @Test
-  public void java_squid() throws Exception {
-    // sonar-java/java-squid (v3.6)
-    test_project("org.sonarsource.java:java-squid", "java-squid");
-  }
-
-  @Test
   public void sonarqube_server() throws Exception {
-    // sonarqube-6.5-M1/server/sonar-server (v.6.5-M1)
-    test_project("org.sonarsource.sonarqube:sonar-server", "sonarqube-6.5-M1/server", "sonar-server");
+    // sonarqube/server/sonar-server (v.5.1.2)
+    test_project("org.codehaus.sonar:sonar-server", "sonarqube/server", "sonar-server");
   }
 
   private static void test_project(String projectKey, String projectName) throws IOException {
@@ -133,7 +124,7 @@ public class SemanticTest {
 
   private static void test_project(String projectKey, @Nullable String path, String projectName) throws IOException {
     prepareProject(projectKey, projectName);
-    String pomLocation = "../../sources/" + (path != null ? path + "/" : "") + projectName + "/pom.xml";
+    String pomLocation = "../sources/" + (path != null ? path + "/" : "") + projectName + "/pom.xml";
     MavenBuild mavenBuild = MavenBuild.create().setPom(FileLocation.of(pomLocation).getFile()).setCleanPackageSonarGoals().addArgument("-DskipTests");
     executeBuildWithCommonProperties(mavenBuild, projectName);
   }
@@ -193,4 +184,12 @@ public class SemanticTest {
     Assertions.assertThat(differences).overridingErrorMessage(differences + " -> file://" + htmlReportPath(projectName) + "/issues-report.html").isEmpty();
   }
 
+  private static File debuggingPlugin() {
+    return Iterables.getOnlyElement(Arrays.asList(new File("../plugin/plugins/java-debugging-plugin/target/").listFiles(new FilenameFilter() {
+      @Override
+      public boolean accept(File dir, String name) {
+        return name.endsWith(".jar") && !name.endsWith("-sources.jar");
+      }
+    })));
+  }
 }
